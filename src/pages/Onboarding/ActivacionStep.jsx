@@ -51,7 +51,8 @@ export default function ActivacionStep() {
   const [ready, setReady] = useState(false);
 
   const state = location.state || {};
-  const nombre = state.nombre || 'Preventa';
+  const nombre   = state.nombre   || 'Preventa';
+  const apellido = state.apellido || '';
   const uid = `PRV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000)}`;
 
   // acceso_completo: aliado siempre tiene acceso; libre solo si aportó marca + evidencia
@@ -107,6 +108,10 @@ export default function ActivacionStep() {
       </div>
 
       <div className="w-full mt-6 bg-[#F7F6F2] rounded-2xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[#9A9A9A]">Nombre completo</span>
+          <span className="text-xs font-medium text-[#1A1A1A]">{nombre} {apellido}</span>
+        </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-[#9A9A9A]">ID de preventa</span>
           <span className="text-xs font-mono font-medium text-[#1A1A1A]">{uid}</span>

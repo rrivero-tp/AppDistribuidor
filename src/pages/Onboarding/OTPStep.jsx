@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, ChevronDown } from 'lucide-react';
+import { Phone, ChevronDown, User } from 'lucide-react';
 import Button from '../../components/Button';
 
 const COUNTRIES = [
@@ -8,16 +8,23 @@ const COUNTRIES = [
   { code: 'MX', flag: '🇲🇽', dial: '+52', label: 'México', placeholder: '55 1234 5678' },
 ];
 
+const ProgressDot = () => (
+  <div className="w-1/5 h-1.5 bg-[#EE7623] rounded-full mb-6" />
+);
+
 export default function OTPStep({ onNext }) {
   const navigate = useNavigate();
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [phone, setPhone] = useState('');
   const [showCountries, setShowCountries] = useState(false);
-  const [step, setStep] = useState('phone'); // phone | otp
+  const [step, setStep] = useState('phone'); // phone | otp | nombre
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(600); // 10 minutes
+  const [timer, setTimer] = useState(600);
   const [loading, setLoading] = useState(false);
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const otpRefs = useRef([]);
+  const nombreRef = useRef(null);
 
   useEffect(() => {
     if (step !== 'otp') return;
@@ -25,7 +32,13 @@ export default function OTPStep({ onNext }) {
     return () => clearInterval(interval);
   }, [step]);
 
-  const formatTimer = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  // Auto-focus nombre field when reaching that step
+  useEffect(() => {
+    if (step === 'nombre') setTimeout(() => nombreRef.current?.focus(), 100);
+  }, [step]);
+
+  const formatTimer = (s) =>
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   const handleSendCode = () => {
     if (phone.replace(/\D/g, '').length < 9) return;
@@ -45,8 +58,7 @@ export default function OTPStep({ onNext }) {
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
-        if (onNext) onNext({ country, phone });
-        else navigate('/onboarding/dni', { state: { country, phone } });
+        setStep('nombre');
       }, 1500);
     }
   };
@@ -55,10 +67,83 @@ export default function OTPStep({ onNext }) {
     if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
   };
 
+  const handleNombreContinue = () => {
+    const data = { country, phone, nombre: nombre.trim(), apellido: apellido.trim() };
+    if (onNext) onNext(data);
+    else navigate('/onboarding/dni', { state: data });
+  };
+
+  // ── Pantalla: nombre y apellido ──────────────────────────────
+  if (step === 'nombre') return (
+    <div className="flex flex-col h-full px-5 pt-6">
+      <div className="mb-6">
+        <ProgressDot />
+        <h2 className="font-display font-bold text-2xl text-[#1A1A1A]">¿Cómo te llamas?</h2>
+        <p className="text-sm text-[#5F6B6D] mt-1">
+          Tu nombre aparecerá en tu perfil y en los reportes
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {/* Nombre */}
+        <div>
+          <label className="text-xs font-medium text-[#5F6B6D] uppercase tracking-wide mb-1.5 block">
+            Nombre(s) <span className="text-[#C33C32]">*</span>
+          </label>
+          <div className="flex items-center gap-3 border-2 border-[#E5E3DC] rounded-2xl px-4 py-3 focus-within:border-[#EE7623] transition-colors bg-white">
+            <User size={17} className="text-[#C8C8C8] shrink-0" />
+            <input
+              ref={nombreRef}
+              type="text"
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              placeholder="Juan Carlos"
+              autoCapitalize="words"
+              className="flex-1 outline-none text-[#1A1A1A] text-base bg-transparent placeholder:text-[#C8C8C8]"
+            />
+          </div>
+        </div>
+
+        {/* Apellido */}
+        <div>
+          <label className="text-xs font-medium text-[#5F6B6D] uppercase tracking-wide mb-1.5 block">
+            Apellido(s) <span className="text-[#C33C32]">*</span>
+          </label>
+          <div className="flex items-center gap-3 border-2 border-[#E5E3DC] rounded-2xl px-4 py-3 focus-within:border-[#EE7623] transition-colors bg-white">
+            <User size={17} className="text-[#C8C8C8] shrink-0" />
+            <input
+              type="text"
+              value={apellido}
+              onChange={e => setApellido(e.target.value)}
+              placeholder="Pérez García"
+              autoCapitalize="words"
+              onKeyDown={e => e.key === 'Enter' && nombre.trim() && apellido.trim() && handleNombreContinue()}
+              className="flex-1 outline-none text-[#1A1A1A] text-base bg-transparent placeholder:text-[#C8C8C8]"
+            />
+          </div>
+        </div>
+
+        {/* Nota de privacidad */}
+        <p className="text-xs text-[#9A9A9A] px-1">
+          Estos datos solo se usan para identificarte dentro de Tienda Pago.
+        </p>
+      </div>
+
+      <div className="mt-auto pb-6 pt-6">
+        <Button
+          label="Continuar"
+          disabled={!nombre.trim() || !apellido.trim()}
+          onClick={handleNombreContinue}
+        />
+      </div>
+    </div>
+  );
+
+  // ── Pantalla: verificar OTP ──────────────────────────────────
   if (step === 'otp') return (
     <div className="flex flex-col h-full px-5 pt-6">
       <div className="mb-2">
-        <div className="w-1/5 h-1.5 bg-[#EE7623] rounded-full mb-6" />
+        <ProgressDot />
         <h2 className="font-display font-bold text-2xl text-[#1A1A1A]">Verifica tu número</h2>
         <p className="text-sm text-[#5F6B6D] mt-1">
           Enviamos un código a {country.dial} {phone}
@@ -93,18 +178,29 @@ export default function OTPStep({ onNext }) {
 
       <div className="mt-8 text-center">
         <p className="text-[#9A9A9A] text-sm">
-          {timer > 0 ? <>Reenviar en <span className="font-mono text-[#1A1A1A]">{formatTimer(timer)}</span></> : (
-            <button className="text-[#EE7623] font-medium" onClick={handleSendCode}>Reenviar código</button>
-          )}
+          {timer > 0
+            ? <>Reenviar en <span className="font-mono text-[#1A1A1A]">{formatTimer(timer)}</span></>
+            : <button className="text-[#EE7623] font-medium" onClick={handleSendCode}>Reenviar código</button>
+          }
         </p>
+      </div>
+
+      <div className="mt-auto pb-6">
+        <button
+          onClick={() => setStep('phone')}
+          className="w-full text-center text-sm text-[#9A9A9A] py-2"
+        >
+          ← Cambiar número
+        </button>
       </div>
     </div>
   );
 
+  // ── Pantalla: ingresar teléfono ──────────────────────────────
   return (
     <div className="flex flex-col h-full px-5 pt-6">
       <div className="mb-6">
-        <div className="w-1/5 h-1.5 bg-[#EE7623] rounded-full mb-6" />
+        <ProgressDot />
         <h2 className="font-display font-bold text-2xl text-[#1A1A1A]">Tu número de teléfono</h2>
         <p className="text-sm text-[#5F6B6D] mt-1">Ingresa el número que usarás en la app</p>
       </div>
@@ -145,6 +241,7 @@ export default function OTPStep({ onNext }) {
           value={phone}
           onChange={e => setPhone(e.target.value)}
           placeholder={country.placeholder}
+          onKeyDown={e => e.key === 'Enter' && phone.replace(/\D/g, '').length >= 9 && handleSendCode()}
           className="flex-1 outline-none text-[#1A1A1A] text-base font-medium placeholder:text-[#C8C8C8] bg-transparent"
         />
       </div>
